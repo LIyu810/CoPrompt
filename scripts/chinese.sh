@@ -1,4 +1,3 @@
-# 先处理数据，
 CUDA_VISIBLE_DEVICES=0 python main.py --max_epochs=20  --num_workers=8 \
     --model_name_or_path  ../plm/chinese-roberta-wwm-ext \
     --accumulate_grad_batches 3 \
