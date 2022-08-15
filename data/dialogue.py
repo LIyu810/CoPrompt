@@ -102,21 +102,10 @@ class CHINESE(BaseDataModule):
         num_added_tokens = self.tokenizer.add_special_tokens({'additional_special_tokens': class_list})
         unused_list = [f"[unused{i}]" for i in range(1, 20)]
         num_added_tokens = self.tokenizer.add_special_tokens({'additional_special_tokens': unused_list})
-        # unused_list = [f"[V{i}]" for i in range(1, 20)]
-        # num_added_tokens = self.tokenizer.add_special_tokens({'additional_special_tokens': unused_list})
+        unused_list = [f"[V{i}]" for i in range(1, 20)]
+        num_added_tokens = self.tokenizer.add_special_tokens({'additional_special_tokens': unused_list})
 
 
-
-        # 新增 unused 仅英文
-        # unused_list = [f"[unused{i}]" for i in range(1,50)]
-        # num_added_tokens = self.tokenizer.add_special_tokens({'additional_special_tokens': unused_list})
-        # # 新增 speaker
-        # speaker_list = [f"[Speaker {i}]" for i in range(1,16)]
-        # num_added_tokens = self.tokenizer.add_special_tokens({'additional_special_tokens': speaker_list})
-        # so_list = ["[speaker],[Speaker]"]
-        # num_added_tokens = self.tokenizer.add_special_tokens({'additional_special_tokens': so_list})
-        # so_list = ["[sub]", "[obj]"]
-        # num_added_tokens = self.tokenizer.add_special_tokens({'additional_special_tokens': so_list})
 
 
 

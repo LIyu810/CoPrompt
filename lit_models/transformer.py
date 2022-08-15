@@ -39,71 +39,6 @@ def multilabel_categorical_crossentropy(y_pred, y_true):
 
 
 
-# class AMSoftmax(nn.Module):
-#     def __init__(self,
-#                  in_feats,
-#                  n_classes=10,
-#                  m=0.35,
-#                  s=30):
-#         super(AMSoftmax, self).__init__()
-#         self.m = m
-#         self.s = s
-#         self.in_feats = in_feats
-#         self.W = torch.nn.Linear(in_feats, n_classes)
-#         # self.W = torch.nn.Parameter(torch.randn(in_feats, n_classes), requires_grad=True)
-#         self.ce = nn.CrossEntropyLoss()
-#         # nn.init.xavier_normal_(self.W, gain=1)
-
-#     def forward(self, x, lb):
-#         assert x.size()[0] == lb.size()[0]
-#         assert x.size()[1] == self.in_feats
-#         x_norm = torch.norm(x, p=2, dim=1, keepdim=True).clamp(min=1e-12)
-#         x_norm = torch.div(x, x_norm)
-#         w_norm = torch.norm(self.W, p=2, dim=0, keepdim=True).clamp(min=1e-12)
-#         w_norm = torch.div(self.W, w_norm)
-#         costh = torch.mm(x_norm, w_norm)
-#         # print(x_norm.shape, w_norm.shape, costh.shape)
-#         lb_view = lb.view(-1, 1)
-#         if lb_view.is_cuda: lb_view = lb_view.cpu()
-#         delt_costh = torch.zeros(costh.size()).scatter_(1, lb_view, self.m)
-#         if x.is_cuda: delt_costh = delt_costh.cuda()
-#         costh_m = costh - delt_costh
-#         costh_m_s = self.s * costh_m
-#         loss = self.ce(costh_m_s, lb)
-#         return loss, costh_m_s
-
-# class AMSoftmax(nn.Module):
-
-#     def __init__(self, in_features, out_features, s=30.0, m=0.35):
-#         '''
-#         AM Softmax Loss
-#         '''
-#         super().__init__()
-#         self.s = s
-#         self.m = m
-#         self.in_features = in_features
-#         self.out_features = out_features
-#         self.fc = nn.Linear(in_features, out_features, bias=False)
-
-#     def forward(self, x, labels):
-#         '''
-#         input shape (N, in_features)
-#         '''
-#         assert len(x) == len(labels)
-#         assert torch.min(labels) >= 0
-#         assert torch.max(labels) < self.out_features
-#         for W in self.fc.parameters():
-#             W = F.normalize(W, dim=1)
-
-#         x = F.normalize(x, dim=1)
-
-#         wf = self.fc(x)
-#         numerator = self.s * (torch.diagonal(wf.transpose(0, 1)[labels]) - self.m)
-#         excl = torch.cat([torch.cat((wf[i, :y], wf[i, y+1:])).unsqueeze(0) for i, y in enumerate(labels)], dim=0)
-#         denominator = torch.exp(numerator) + torch.sum(torch.exp(self.s * excl), dim=1)
-#         L = numerator - torch.log(denominator)
-#         return -torch.mean(L)
-
 
 class BertLitModel(BaseLitModel):
     """
@@ -267,91 +202,7 @@ class BertLitModel(BaseLitModel):
         
         return final_output
 
-    # ke_loss 版本1 ｜｜real - mask ｜｜2
-    # def ke_loss(self, logits, labels, input_ids):
-    #     bsz = logits.shape[0]
-    #     # 将labels 独热编码格式转换为 标签
-    #
-    #     labels_id = labels.cpu().numpy()
-    #     labels_id = np.argmax(labels_id, axis=1)
-    #     labels_id = torch.from_numpy(labels_id)
-    #
-    #     _, mask_idx = (input_ids == self.tokenizer.mask_token_id).nonzero(as_tuple=True)
-    #     mask_output = logits[torch.arange(bsz), mask_idx]
-    #     mask_relation_embedding = mask_output
-    #     real_relation_embedding = self.model.get_output_embeddings().weight[labels_id + self.label_st_id]
-    #
-    #     d_1 = torch.norm(mask_relation_embedding - real_relation_embedding, p=2) / bsz
-    #     f = torch.nn.LogSigmoid()
-    #     loss = -1.*f(self.args.t_gamma - d_1)
-    #
-    #     return loss
 
-    # ke_loss 版本2 测试 ｜｜real - mask ｜｜2     /   ｜｜real - rand ｜｜2
-
-    # ke_loss 版本3 测试 ｜｜real - mask ｜｜2     /   ｜｜real - rand ｜｜2  负样本取值范围 21128- 21157
-    # def ke_loss(self, logits, labels, input_ids):
-    #     bsz = logits.shape[0]
-    #     # 将labels 独热编码格式转换为 标签
-    #
-    #     labels_id = labels.cpu().numpy()
-    #     labels_id = np.argmax(labels_id, axis=1)
-    #     for i in range(bsz):
-    #         labels_id[i] = labels_id[i] + self.label_st_id
-    #     rand_id = np.random.randint(21128, 21157, bsz)
-    #     for i in range(bsz):
-    #         if labels_id[i] == rand_id[i]:
-    #             rand_id[i] = rand_id[i-1]
-    #
-    #     labels_id = torch.from_numpy(labels_id)
-    #     rand_id = torch.from_numpy(rand_id)
-    #
-    #
-    #     _, mask_idx = (input_ids == self.tokenizer.mask_token_id).nonzero(as_tuple=True)    # mask_idx 对应[mask]在input中的位置
-    #     mask_output = logits[torch.arange(bsz), mask_idx]
-    #     mask_relation_embedding = mask_output
-    #     real_relation_embedding = self.model.get_output_embeddings().weight[labels_id]
-    #
-    #     rand_relation_embedding = self.model.get_output_embeddings().weight[rand_id]
-    #     d_1 = torch.norm(real_relation_embedding - mask_relation_embedding, p=2) / bsz     # 正样本
-    #     d_2 = torch.norm(real_relation_embedding - rand_relation_embedding, p=2) / bsz     # 负样本
-    #     f = torch.nn.LogSigmoid()
-    #     loss = -1. * f(self.args.t_gamma - d_1) - f(d_2 - self.args.t_gamma)
-    #     return loss
-
-    # 版本4       加入了负样本   F.cosine_similarity
-    # def ke_loss(self, logits, labels, input_ids):
-    #     bsz = logits.shape[0]
-    #     # 将labels 独热编码格式转换为 标签
-    #
-    #     labels_id = labels.cpu().numpy()
-    #     labels_id = np.argmax(labels_id, axis=1)
-    #     for i in range(bsz):
-    #         labels_id[i] = labels_id[i] + self.label_st_id
-    #     rand_id = np.random.randint(21128, 21157, bsz)
-    #     for i in range(bsz):
-    #         if labels_id[i] == rand_id[i]:
-    #             rand_id[i] = rand_id[i-1]
-    #
-    #     labels_id = torch.from_numpy(labels_id)
-    #     rand_id = torch.from_numpy(rand_id)
-    #
-    #     _, mask_idx = (input_ids == self.tokenizer.mask_token_id).nonzero(as_tuple=True)        # mask_idx 对应[mask]在input中的位置
-    #     mask_output = logits[torch.arange(bsz), mask_idx]
-    #     mask_relation_embedding = mask_output
-    #
-    #     real_relation_embedding = self.model.get_output_embeddings().weight[labels_id]
-    #     rand_relation_embedding = self.model.get_output_embeddings().weight[rand_id]
-    #
-    #     d_1 = F.cosine_similarity(real_relation_embedding,mask_relation_embedding,dim=1)
-    #     d_1 = sum(d_1) / bsz
-    #     d_2 = F.cosine_similarity(mask_relation_embedding,rand_relation_embedding,dim=1)
-    #     d_2 = sum(d_2) / bsz
-    #     f = torch.nn.LogSigmoid()
-    #     loss = -1. * f(d_1 - self.args.t_gamma) - f(self.args.t_gamma - d_2)
-    #     return loss]
-
-    # 更新
     def ke_loss(self, logits, labels, input_ids):
         bsz = logits.shape[0]
         labels_id = labels.cpu().numpy()
@@ -382,66 +233,6 @@ class BertLitModel(BaseLitModel):
         f = torch.nn.LogSigmoid()
         loss = -1. * f(d_1 - self.args.t_gamma) - f(self.args.t_gamma - d_2)
         return loss
-
-
-    # 版本5
-    # def ke_loss(self, logits, labels, input_ids):
-    #     bsz = logits.shape[0]
-    #     # 将labels 独热编码格式转换为 标签
-    #
-    #     labels_id = labels.cpu().numpy()
-    #     labels_id = np.argmax(labels_id, axis=1)
-    #
-    #     labels_id = torch.from_numpy(labels_id).to(torch.device("cuda"))
-    #
-    #     _, mask_idx = (input_ids == self.tokenizer.mask_token_id).nonzero(
-    #         as_tuple=True)  # mask_idx 对应[mask]在input中的位置
-    #     mask_output = logits[torch.arange(bsz), mask_idx]
-    #     mask_relation_embedding = mask_output  # 6*768
-    #     mask_relation_embedding = mask_relation_embedding.repeat(30, 1, 1).permute(1, 0, 2)  # 6*30*768
-    #     # real_21128 = self.model.get_output_embeddings().weight[21128]
-    #     real_relation_embedding = []
-    #     for i in range(21128, 21158):
-    #         real_i = self.model.get_output_embeddings().weight[i]  # 1*768
-    #         real_i = torch.tensor(real_i).unsqueeze_(0)
-    #         real_relation_embedding.append(real_i)
-    #     real_relation_embedding = torch.cat(real_relation_embedding, dim=0)  # 30 * 768
-    #
-    #     real_relation_embedding = real_relation_embedding.repeat(bsz, 1, 1)  # 6 * 30 * 768
-    #
-    #     d_3 = F.cosine_similarity(real_relation_embedding, mask_relation_embedding, dim=-1)
-    #     loss = torch.nn.functional.cross_entropy(d_3, labels_id)
-    #     return loss
-
-
-    # 版本5_1 增加温度系数（0.2） labels_id 对齐
-    # def ke_loss(self, logits, labels, input_ids):
-    #     bsz = logits.shape[0]
-    #     # 将labels 独热编码格式转换为 标签
-    #
-    #     labels_id = labels.cpu().numpy()
-    #     labels_id = np.argmax(labels_id, axis=1)
-    #     labels_id = torch.from_numpy(labels_id).to(torch.device("cuda"))
-    #
-    #
-    #     _, mask_idx = (input_ids == self.tokenizer.mask_token_id).nonzero(as_tuple=True)  # mask_idx 对应[mask]在input中的位置
-    #     mask_output = logits[torch.arange(bsz), mask_idx]
-    #     mask_relation_embedding = mask_output  # 6*768
-    #     mask_relation_embedding = mask_relation_embedding.repeat(30, 1, 1).permute(1, 0, 2)  # 6*30*768
-    #     # real_21128 = self.model.get_output_embeddings().weight[21128]
-    #     real_relation_embedding = []
-    #     for i in range(21128, 21158):
-    #         real_i = self.model.get_output_embeddings().weight[i]                        # 1*768
-    #         real_i = torch.tensor(real_i).unsqueeze_(0)
-    #         real_relation_embedding.append(real_i)
-    #     real_relation_embedding = torch.cat(real_relation_embedding,dim=0)               # 30 * 768
-    #
-    #     real_relation_embedding = real_relation_embedding.repeat(bsz,1,1)                # 6 * 30 * 768
-    #
-    #     d_3 = F.cosine_similarity(real_relation_embedding, mask_relation_embedding, dim=-1)
-    #     d_3 = torch.divide(d_3,0.2)
-    #     loss = torch.nn.functional.cross_entropy(d_3, labels_id+1)
-    #     return loss
 
 
 
@@ -504,19 +295,6 @@ class DialogueLitModel(BertLitModel):
         loss = self.loss_fn(logits, labels) + self.t_lambda * ke_loss
         self.log("Train/loss", loss)
         return loss
-
-
-
-
-
-    # def training_step(self, batch, batch_idx):  # pylint: disable=unused-argument
-    #     input_ids, attention_mask, token_type_ids , labels = batch
-    #     result = self.model(input_ids, attention_mask, token_type_ids, return_dict=True, output_hidden_states=True)
-    #     logits = result.logits
-    #     logits = self.pvp(logits, input_ids)
-    #     loss = self.loss_fn(logits, labels)
-    #     self.log("Train/loss", loss)
-    #     return loss
 
 
 

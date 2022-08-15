@@ -243,7 +243,7 @@ class relossProcessor(DataProcessor): #bert_s
             for i in range(len(data)):
                 for j in range(len(data[i][1])):
                     rid = []
-                    for k in range(30):   # 36 --> 30
+                    for k in range(30):
                         if k+1 in data[i][1][j]["rid"]:
                             rid += [1]
                         else:
@@ -290,46 +290,6 @@ class relossProcessor(DataProcessor): #bert_s
 
 # CRECIL
 
-# class bertProcessor(DataProcessor):  # bert_s
-#     def __init__(self, data_path="data", use_prompt=False, label_len=30):  # 36 --> 30
-#         # dialogue 数据处理位置
-#         def is_speaker(a):
-#             # 判断是否说话人
-#             a = a.split()
-#             return len(a) == 2 and a[0] == "speaker" and a[1].isdigit()
-#
-#         # replace the speaker with [unused] token
-#         def rename(d, x, y):
-#             # 对文本、s和o进行 rename
-#             d = d.replace("’", "'")
-#             d = d.replace("im", "i")
-#             d = d.replace("...", ".")
-#             V = ["[V1]", "[V2]"]
-#             a = []
-#             # 仅更换说话人为unused
-#             # 如果s是说话人
-#             if is_speaker(x):
-#                 a += [x]
-#             else:
-#                 a += [None]
-#             # s与o不相同，而且o是说话人
-#             if x != y and is_speaker(y):
-#                 a += [y]
-#             else:
-#                 a += [None]
-#             # 此时 a 长度为2
-#             for i in range(len(a)):
-#                 if a[i] is None:
-#                     continue
-#                 d = d.replace(a[i] + ":", V[i] + " :")
-#                 # 将xy即so更换为unused
-#                 if x == a[i]:
-#                     x = V[i]
-#                     # x = a[i]
-#                 if y == a[i]:
-#                     # y = a[i]
-#                     y = V[i]
-#             return d, x, y
 
 
 class bertProcessor(DataProcessor): #bert_s
@@ -395,10 +355,8 @@ class bertProcessor(DataProcessor): #bert_s
                     # print(h, t)
                     # print(asdasd)
                     if use_prompt:
-                        # prompt = f"{h} {t} [unused3] [unused4] [unused5] [unused6] [unused7] [MASK] ."
-                        # prompt = f"{h} is the [MASK] {t} ."
-                        # prompt = f"{h} {t} [V1] [V2] [V3] [V4] [V5] [V6] [MASK] ."
-                        prompt = f"{h}和{t}的关系是[MASK]"
+                        prompt = f"{h} {t} [V1] [V2] [V3] [V4] [V5] [V6] [MASK] ."
+                        # prompt = f"{h}和{t}的关系是[MASK]"
                     else:
                         prompt = f"what is the relation between {h} and {t} ?"
                     sample_idx += 1
